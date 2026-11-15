@@ -89,8 +89,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/thoughts-frontend:${{ github.ref_name }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/thoughts-frontend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/connect-frontend:${{ github.ref_name }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/connect-frontend:latest
 
   push-backend-docker-image:
     needs: [file-changes]
@@ -117,5 +117,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/thoughts-backend:${{ github.ref_name }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/thoughts-backend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/connect-backend:${{ github.ref_name }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/connect-backend:latest
