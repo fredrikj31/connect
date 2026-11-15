@@ -18,7 +18,7 @@ export const App = () => {
     <>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <ThemeProvider defaultTheme="light" storageKey="thoughts-theme">
+          <ThemeProvider defaultTheme="light" storageKey="connect-theme">
             <AuthProvider>
               <Routes>
                 <Route

@@ -64,7 +64,7 @@ export const SignupPage = () => {
       <div className="bg-zinc-200 dark:bg-zinc-900 w-full p-16 flex flex-col justify-between">
         <div className="flex flex-row items-center gap-2">
           <MessageCircle className="size-12 text-black dark:text-white" />
-          <h1 className="text-5xl font-semibold">Thoughts</h1>
+          <h1 className="text-5xl font-semibold">Connect</h1>
         </div>
         <div className="flex flex-col gap-1">
           <p className="text-2xl italic">

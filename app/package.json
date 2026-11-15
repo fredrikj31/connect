@@ -1,5 +1,5 @@
 {
-  "name": "@thoughts/app",
+  "name": "@connect/app",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

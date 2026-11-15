@@ -81,7 +81,7 @@ export const Navbar = () => {
           <SheetContent side="left">
             <SheetHeader>
               <SheetTitle>
-                <span className="text-2xl">Thoughts</span>
+                <span className="text-2xl">Connect</span>
               </SheetTitle>
               <SheetDescription className="flex flex-col gap-2">
                 {links.map((link, index) => (
