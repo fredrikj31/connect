@@ -1,30 +1,57 @@
 {
-  "name": "thoughts",
+  "name": "connect",
+  "description": "A social network which focuses on close relationships between people.",
+  "author": "fredrikj31",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "api:build": "pnpm run --filter @thoughts/api build",
-    "app:build": "pnpm run --filter @thoughts/app build",
-    "api:build:check": "pnpm run --filter @thoughts/api build:check",
-    "app:build:check": "pnpm run --filter @thoughts/app build:check",
-    "api:dev": "pnpm run --filter @thoughts/api dev",
-    "app:dev": "pnpm run --filter @thoughts/app dev",
-    "api:lint": "pnpm run --filter @thoughts/api lint",
-    "app:lint": "pnpm run --filter @thoughts/app lint",
-    "api:format:check": "pnpm run --filter @thoughts/api format:check",
-    "app:format:check": "pnpm run --filter @thoughts/app format:check",
-    "api:format:write": "pnpm run --filter @thoughts/api format:write",
-    "app:format:write": "pnpm run --filter @thoughts/app format:write",
     "prepare": "husky",
-    "pre-commit": "lint-staged -c lint-staged.config.js"
+    "pre-commit": "lint-staged -c lint-staged.config.js",
+    "format:check": "prettier --check .",
+    "format:write": "prettier --write .",
+    "lint:check": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "backend:dev": "pnpm database:build && pnpm --filter @connect/backend dev",
+    "backend:build": "pnpm --filter @connect/backend... build",
+    "backend:build:check": "pnpm database:build && pnpm --filter @connect/backend build:check",
+    "backend:lint": "eslint backend",
+    "backend:auth:generate": "pnpm --filter @connect/backend auth:generate",
+    "frontend:dev": "pnpm --filter @connect/frontend dev",
+    "frontend:build": "pnpm --filter @connect/frontend build",
+    "frontend:build:check": "pnpm --filter @connect/frontend build:check",
+    "frontend:lint": "eslint frontend",
+    "database:build": "pnpm --filter @connect/database build",
+    "database:build:check": "pnpm --filter @connect/database build:check",
+    "database:lint": "eslint database",
+    "database:generate": "pnpm --filter @connect/database database:generate",
+    "database:migrate": "pnpm --filter @connect/database database:migrate"
   },
-  "devDependencies": {
-    "husky": "^9.1.7",
-    "lint-staged": "^16.2.6"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fredrikj31/connect.git"
   },
-  "packageManager": "pnpm@9.0.0",
   "engines": {
-    "node": ">=22",
-    "pnpm": ">=9"
+    "node": ">=24",
+    "pnpm": ">=12"
+  },
+  "packageManager": "pnpm@12.23.0",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/github": "^12.0.10",
+    "@semantic-release/release-notes-generator": "^14.1.1",
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.14.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.9.10",
+    "semantic-release": "^25.0.9",
+    "semantic-release-export-data": "^1.2.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1"
   }
 }

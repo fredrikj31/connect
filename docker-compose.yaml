@@ -1,3 +1,5 @@
+name: connect
+
 x-logging: &default-logging
   driver: "json-file"
   options:
@@ -5,99 +7,132 @@ x-logging: &default-logging
     max-file: "3"
 
 services:
-  local-database:
-    container_name: thoughts-database
-    image: "postgres:17-alpine"
+  # ----- DEVELOPMENT -----
+  dev-database:
+    container_name: connect-database
+    image: postgres:18-alpine
     restart: always
     profiles:
       - dev
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: thoughts
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: connect
     ports:
       - 5432:5432
     volumes:
-      - ./.docker/database:/var/lib/postgresql/data # locally bound ".docker" folder
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql # init database with SQL files from local "database" folder
+      # Database files are stored on the local file system (gitignored)
+      - ./.docker/database:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d connect"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     logging: *default-logging
 
-  database:
-    container_name: thoughts-database
-    image: "postgres:17-alpine"
-    restart: always
-    profiles:
-      - prod
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: thoughts
-    ports:
-      - 3000:5432
-    networks:
-      - thoughts-network
-    volumes:
-      - database-data:/var/lib/postgresql/data # store data from postgresql in the volume
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql # init database with SQL files from local "database" folder
-    logging: *default-logging
-
-  assets-local:
-    container_name: thoughts-assets
-    image: "nginx:1.27.3-alpine"
+  dev-assets:
+    container_name: connect-assets
+    image: nginx:1.31.6-alpine
     restart: always
     profiles:
       - dev
     ports:
-      - 8000:80
+      - ${ASSETS_PORT:-8000}:80
     volumes:
-      - ./.docker/assets:/usr/share/nginx/data/ # locally bound ".docker" folder
-      - ./nginx/asset.conf:/etc/nginx/conf.d/default.conf
+      # Populated by the backend (profile pictures) running locally with UPLOADS_FILE_PATH=../.docker/assets
+      - ./.docker/assets:/usr/share/nginx/data:ro
+      - ./nginx/assets.conf:/etc/nginx/conf.d/default.conf:ro
     logging: *default-logging
 
-  assets:
-    container_name: thoughts-assets
-    image: "nginx:1.27.3-alpine"
-    restart: always
-    profiles:
-      - prod
-    ports:
-      - 3001:80
-    networks:
-      - thoughts-network
-      - cloudflared
-    volumes:
-      - assets-data:/usr/share/nginx/data
-      - ./nginx/asset.conf:/etc/nginx/conf.d/default.conf
-    logging: *default-logging
-
-  backend:
-    container_name: thoughts-backend
-    image: fredrikj31/thoughts-backend:latest
+  # ----- PRODUCTION -----
+  database:
+    container_name: connect-database
+    image: postgres:18-alpine
     restart: always
     profiles:
       - prod
     environment:
-      WEBSITE_BASE_URL: ${WEBSITE_BASE_URL}
-      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
-      PASSWORD_SALT: ${PASSWORD_SALT}
-      DB_HOST: thoughts-database
-      DB_PORT: 5432 # Must be set to "5432", because the backend and database shares network
-      DB_NAME: thoughts
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      UPLOADS_FILE_PATH: /files${UPLOADS_FILE_PATH} # /files is the root folder, which is the container's mount point
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: connect
+    ports:
+      - ${DATABASE_PORT:-5000}:5432
     networks:
-      - thoughts-network
+      - connect-network
+    volumes:
+      - database-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d connect"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  migrate:
+    container_name: connect-migrate
+    image: ghcr.io/fredrikj31/connect-migrate:latest
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: "no"
+    profiles:
+      - prod
+    environment:
+      DATABASE_HOST: connect-database
+      DATABASE_PORT: 5432
+      DATABASE_NAME: connect
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+    networks:
+      - connect-network
+    logging: *default-logging
+
+  assets:
+    container_name: connect-assets
+    image: nginx:1.31.6-alpine
+    restart: always
+    profiles:
+      - prod
+    networks:
+      - cloudflared
+    ports:
+      - ${ASSETS_PORT:-5003}:80
+    volumes:
+      - assets-data:/usr/share/nginx/data:ro
+      - ./nginx/assets.conf:/etc/nginx/conf.d/default.conf:ro
+    logging: *default-logging
+
+  backend:
+    container_name: connect-backend
+    image: ghcr.io/fredrikj31/connect-backend:latest
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: always
+    profiles:
+      - prod
+    environment:
+      AUTH_BASE_URL: ${AUTH_BASE_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+      DATABASE_HOST: connect-database
+      DATABASE_PORT: 5432
+      DATABASE_NAME: connect
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      WEBSITE_BASE_URL: ${WEBSITE_BASE_URL}
+      UPLOADS_FILE_PATH: /files # The assets volume mount point; profile pictures land in /files/profiles
+    networks:
+      - connect-network
       - cloudflared
     volumes:
-      - assets-data:/files # /files is the root folder, which is the container's mount point
+      - assets-data:/files
     ports:
-      - 3002:3000
+      - ${BACKEND_PORT:-5001}:3000
     logging: *default-logging
 
   frontend:
-    container_name: thoughts-frontend
-    image: fredrikj31/thoughts-frontend:latest
+    container_name: connect-frontend
+    image: ghcr.io/fredrikj31/connect-frontend:latest
     restart: always
     profiles:
       - prod
@@ -107,19 +142,19 @@ services:
     networks:
       - cloudflared
     ports:
-      - 3003:80
+      - ${FRONTEND_PORT:-5002}:80
     logging: *default-logging
 
 networks:
-  thoughts-network:
+  connect-network:
     driver: bridge
   cloudflared:
     external: true
 
 volumes:
   database-data:
-    name: thoughts-database-data
+    name: connect-database-data
     driver: local
   assets-data:
-    name: thoughts-assets-data
+    name: connect-assets-data
     driver: local

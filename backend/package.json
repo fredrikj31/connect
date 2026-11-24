@@ -1,0 +1,35 @@
+{
+  "name": "@connect/backend",
+  "version": "1.0.0",
+  "main": "src/app.ts",
+  "scripts": {
+    "dev": "tsx watch --include src src/app.ts | pino-pretty",
+    "build": "tsc -p tsconfig.build.json",
+    "build:check": "tsc --noEmit",
+    "auth:generate": "pnpm dlx auth@1.7.28 generate --yes --config src/tools/auth/cli.ts --output ../database/src/schemas/auth.ts && tsx src/tools/auth/stripLegacyRelations.ts ../database/src/schemas/auth.ts && prettier --write ../database/src/schemas/auth.ts"
+  },
+  "dependencies": {
+    "@connect/database": "workspace:*",
+    "@fastify/cookie": "^11.1.5",
+    "@fastify/cors": "^11.3.1",
+    "@fastify/multipart": "^9.3.0",
+    "@fastify/swagger": "^9.9.3",
+    "@scalar/fastify-api-reference": "^1.76.4",
+    "better-auth": "^1.7.28",
+    "dotenv": "^18.0.9",
+    "drizzle-orm": "1.0.0-rc.4",
+    "fastify": "^5.12.7",
+    "fastify-plugin": "^6.0.1",
+    "fastify-type-provider-zod": "^7.0.0",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
+    "pino-pretty": "^13.2.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
