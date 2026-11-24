@@ -1,87 +1,99 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import cookies from "js-cookie";
-import { Profile } from "../types/profile";
-import { useLoginUser } from "../api/actions/login/useLoginUser";
-import { decodeJwtToken } from "../helpers/decodeJwtToken";
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useMemo,
+} from "react";
 import { useNavigate } from "react-router";
-import { useSignupUser } from "../api/actions/signup/useSignupUser";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@shadcn-ui/components/ui/use-toast";
-import { ToastAction } from "@shadcn-ui/components/ui/toast";
-import { useLogoutUser } from "../api/actions/logout/useLogoutUser";
-import { refreshToken } from "../api/actions/refreshToken";
-import { Account } from "../types/account";
+import { authClient } from "../auth/client";
+import { login } from "../api/auth/login/login";
+import { useLogin } from "../api/auth/login/useLogin";
+import { useLogout } from "../api/auth/logout/useLogout";
+import { signup } from "../api/auth/signup/signup";
+import { useSignup } from "../api/auth/signup/useSignup";
 
 type AuthProviderProps = {
-  children: React.ReactNode;
+  children: ReactNode;
 };
+
+type Session = typeof authClient.$Infer.Session;
 
 type AuthProviderValue = {
   isAuthenticated: boolean;
-  userId: string | undefined;
-  // Methods
-  login: (data: Pick<Account, "email" | "password">) => void;
-  signup: (
-    data: Pick<Account, "email" | "password"> &
-      Omit<Profile, "userId" | "createdAt" | "updatedAt" | "deletedAt">,
-  ) => void;
+  isPending: boolean;
+  user: Session["user"] | null;
+  signup: (data: Parameters<typeof signup>[0]) => void;
+  login: (data: Parameters<typeof login>[0]) => void;
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthProviderValue | null>(null);
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [accessToken, setAccessToken] = useState<string | undefined>(
-    cookies.get("access_token"),
-  );
-  const refreshTokenCookie = cookies.get("refresh_token");
-
-  const decodedAccessToken = useMemo<{ userId: string } | undefined>(() => {
-    return decodeJwtToken<{ userId: string }>({
-      token: accessToken,
-    });
-  }, [accessToken]);
-
-  const isAuthenticated = useMemo<boolean>(() => {
-    return accessToken !== undefined ? true : false;
-  }, [accessToken]);
-
-  const [userId, setUserId] = useState<string | undefined>(
-    decodedAccessToken?.userId,
-  );
-
+  const { data: session, isPending } = authClient.useSession();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { mutate: loginUser } = useLoginUser();
-  const { mutate: signupUser } = useSignupUser();
-  const { mutate: logoutUser } = useLogoutUser();
+  const { mutate: signupUser } = useSignup();
+  const { mutate: loginUser } = useLogin();
+  const { mutate: logoutUser } = useLogout();
 
-  useEffect(() => {
-    if (!accessToken && refreshTokenCookie) {
-      void refreshToken().then(() => {
-        setAccessToken(cookies.get("access_token"));
-        void navigate("/");
+  // Derived from the session on every render: no separate state, no effect,
+  // no stale window between isPending flipping and the user being available.
+  const user = session?.user ?? null;
+  const isAuthenticated = !!session;
+
+  const signupAction = useCallback(
+    (data: Parameters<typeof signup>[0]) => {
+      signupUser(data, {
+        onError: (error) => {
+          toast({
+            variant: "destructive",
+            title: "Error signing up!",
+            description: error.message,
+          });
+        },
+        onSuccess: () => {
+          // Drop anything cached for a previous session (e.g. a 401 on the
+          // profile query from logging out) before the layout mounts.
+          queryClient.clear();
+          toast({
+            title: "Successfully signed up!",
+            description: "Welcome to the club. You are now signed in.",
+          });
+          void navigate("/");
+        },
       });
-    }
-  }, [navigate, accessToken, refreshTokenCookie]);
+    },
+    [signupUser, queryClient, toast, navigate],
+  );
 
-  const login = (data: Pick<Account, "email" | "password">) => {
-    loginUser(data, {
-      onError: (error) => {
-        toast({
-          variant: "destructive",
-          title: "Error logging in!",
-          description: error.message,
-        });
-      },
-      onSuccess: () => {
-        setUserId(decodedAccessToken?.userId);
-        setAccessToken(cookies.get("access_token"));
-        void navigate("/");
-      },
-    });
-  };
+  const loginAction = useCallback(
+    (data: Parameters<typeof login>[0]) => {
+      loginUser(data, {
+        onError: (error) => {
+          toast({
+            variant: "destructive",
+            title: "Error logging in!",
+            description: error.message,
+          });
+        },
+        onSuccess: () => {
+          // Drop anything cached for a previous session (e.g. a 401 on the
+          // profile query from logging out). authClient.useSession()
+          // refetches on its own; just navigate.
+          queryClient.clear();
+          void navigate("/");
+        },
+      });
+    },
+    [loginUser, queryClient, toast, navigate],
+  );
 
-  const logout = () => {
+  const logoutAction = useCallback(() => {
     logoutUser(undefined, {
       onError: (error) => {
         toast({
@@ -91,67 +103,34 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         });
       },
       onSuccess: () => {
-        setUserId(undefined);
+        queryClient.clear();
         void navigate("/login");
       },
     });
-  };
+  }, [logoutUser, toast, queryClient, navigate]);
 
-  const signup = (
-    data: Pick<Account, "email" | "password"> &
-      Omit<Profile, "userId" | "createdAt" | "updatedAt" | "deletedAt">,
-  ) => {
-    signupUser(data, {
-      onError: (error) => {
-        toast({
-          variant: "destructive",
-          title: "Error signing up!",
-          description: error.message,
-        });
-      },
-      onSuccess: () => {
-        toast({
-          title: "Successfully signed up!",
-          description: "Welcome to the club. You are now signed up",
-          action: (
-            <ToastAction altText="Login" onClick={() => void navigate("/")}>
-              Login
-            </ToastAction>
-          ),
-        });
-        void navigate("/login");
-      },
-    });
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{ isAuthenticated, userId, login, logout, signup }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      isAuthenticated,
+      isPending,
+      user,
+      signup: signupAction,
+      login: loginAction,
+      logout: logoutAction,
+    }),
+    [isAuthenticated, isPending, user, signupAction, loginAction, logoutAction],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 // eslint-disable-next-line react-refresh/only-export-components -- hook lives next to its provider; editing this file triggers a full reload instead of HMR
 export const useAuth = (): AuthProviderValue => {
   const authContext = useContext(AuthContext);
 
-  const auth = useMemo(() => {
-    if (!authContext) {
-      throw new Error("useAuth must be used within an AuthProvider");
-    }
+  if (!authContext) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
 
-    const auth: AuthProviderValue = {
-      isAuthenticated: authContext.isAuthenticated,
-      userId: authContext.userId,
-      login: authContext.login,
-      logout: authContext.logout,
-      signup: authContext.signup,
-    };
-
-    return auth;
-  }, [authContext]);
-
-  return auth;
+  return authContext;
 };

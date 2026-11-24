@@ -1,17 +1,18 @@
-interface ApiErrorOptions {
-  statusCode: number;
-  code: string;
-  message: string;
-}
+import { z } from "zod";
+
+export const ApiErrorBodySchema = z.object({
+  code: z.string(),
+  message: z.string(),
+});
 
 export class ApiError extends Error {
-  public statusCode: number;
-  public code: string;
+  readonly status: number;
+  readonly code: string;
 
-  constructor({ statusCode, code, message }: ApiErrorOptions) {
+  constructor(status: number, code: string, message: string) {
     super(message);
     this.name = "ApiError";
-    this.statusCode = statusCode;
+    this.status = status;
     this.code = code;
   }
 }

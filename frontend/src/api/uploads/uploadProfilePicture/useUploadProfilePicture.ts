@@ -1,10 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
-import { uploadProfilePicture } from ".";
+import { uploadProfilePicture } from "./uploadProfilePicture";
 
 export const useUploadProfilePicture = () => {
   return useMutation({
-    mutationFn: ({ profilePicture }: { profilePicture: File }) => {
-      return uploadProfilePicture({ profilePicture });
+    mutationFn: (options: Parameters<typeof uploadProfilePicture>[0]) => {
+      return uploadProfilePicture(options);
     },
   });
 };

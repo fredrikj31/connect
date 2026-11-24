@@ -1,52 +1,40 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ThemeProvider } from "./providers/theme";
 import { BrowserRouter, Route, Routes } from "react-router";
-import { HomePage } from "./routes/Home";
-import { LandingPage } from "./routes/Landing";
-import { SignupPage } from "./routes/Signup";
 import { Toaster } from "@shadcn-ui/components/ui/toaster";
-import { LoginPage } from "./routes/Login";
+import { ThemeProvider } from "./providers/theme";
 import { AuthProvider } from "./providers/auth";
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import { FriendsPage } from "./routes/Friends";
-import { SettingsPage } from "./routes/Settings";
+import { AuthenticatedRouteLayout } from "./routes/_authenticated/route";
+import { IndexRoute } from "./routes/_authenticated.index/route";
+import { FriendsRoute } from "./routes/_authenticated.friends/route";
+import { SettingsRoute } from "./routes/_authenticated.settings/route";
+import { LandingRoute } from "./routes/landing/route";
+import { LoginRoute } from "./routes/login/route";
+import { SignupRoute } from "./routes/signup/route";
+import { OnboardingRoute } from "./routes/onboarding/route";
+
+const queryClient = new QueryClient();
 
 export const App = () => {
-  const queryClient = new QueryClient();
-
   return (
-    <>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <ThemeProvider defaultTheme="light" storageKey="connect-theme">
-            <AuthProvider>
-              <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute>
-                      <HomePage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/friends"
-                  element={
-                    <ProtectedRoute>
-                      <FriendsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignupPage />} />
-                <Route path="/landing" element={<LandingPage />} />
-              </Routes>
-              <Toaster />
-            </AuthProvider>
-          </ThemeProvider>
-        </BrowserRouter>
-      </QueryClientProvider>
-    </>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <ThemeProvider defaultTheme="light" storageKey="connect-theme">
+          <AuthProvider>
+            <Routes>
+              <Route path="/landing" element={<LandingRoute />} />
+              <Route path="/login" element={<LoginRoute />} />
+              <Route path="/signup" element={<SignupRoute />} />
+              <Route path="/onboarding" element={<OnboardingRoute />} />
+              <Route path="/" element={<AuthenticatedRouteLayout />}>
+                <Route index element={<IndexRoute />} />
+                <Route path="friends" element={<FriendsRoute />} />
+                <Route path="settings" element={<SettingsRoute />} />
+              </Route>
+            </Routes>
+            <Toaster />
+          </AuthProvider>
+        </ThemeProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 };

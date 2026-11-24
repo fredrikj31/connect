@@ -1,8 +1,10 @@
 import { z } from "zod";
 
 const envVarsSchema = z.object({
-  VITE_API_BASE_URL: z.string(),
-  VITE_ASSETS_BASE_URL: z.string(),
+  VITE_API_BASE_URL: z.url(),
+  VITE_ASSETS_BASE_URL: z.url(),
+  // Injected at build time by Dockerfile.frontend from the semantic-release version
+  VITE_APP_VERSION: z.string().min(1).optional(),
 });
 
 const envVars = envVarsSchema.safeParse(import.meta.env);
@@ -17,5 +19,8 @@ export const config = {
   },
   assets: {
     baseUrl: envVars.data.VITE_ASSETS_BASE_URL,
+  },
+  app: {
+    version: envVars.data.VITE_APP_VERSION ?? "dev",
   },
 };

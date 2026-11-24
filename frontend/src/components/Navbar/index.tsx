@@ -23,7 +23,7 @@ import { NavbarLink } from "./components/NavbarLink";
 import { useTheme } from "../../providers/theme";
 import { ThemeToggler } from "./components/ThemeToggler";
 import { useAuth } from "../../providers/auth";
-import { useGetUserProfile } from "../../api/profiles/getUserProfile/useGetUserProfile";
+import { useGetProfile } from "../../api/profiles/getProfile/useGetProfile";
 import { Bell, House, Mail, Menu, Users } from "lucide-react";
 import { Link } from "react-router";
 import { config } from "../../config";
@@ -32,7 +32,7 @@ import { JSX } from "react";
 export const Navbar = () => {
   const { logout } = useAuth();
   const { theme, setTheme } = useTheme();
-  const { data: user } = useGetUserProfile();
+  const { data: profile } = useGetProfile();
 
   const toggleTheme = () => {
     switch (theme) {
@@ -46,6 +46,10 @@ export const Navbar = () => {
         break;
     }
   };
+
+  const initials = profile
+    ? `${profile.firstName[0] ?? ""}${profile.lastName[0] ?? ""}`.toUpperCase()
+    : "";
 
   const links: { text: string; path: string; icon: JSX.Element }[] = [
     {
@@ -123,16 +127,14 @@ export const Navbar = () => {
             <Avatar className="size-12">
               <AvatarImage
                 className="object-cover"
-                src={`${config.assets.baseUrl}/profiles/${user?.userId}`}
+                src={`${config.assets.baseUrl}/profiles/${profile?.userId}`}
               />
-              <AvatarFallback>
-                {`${user?.firstName[0]}${user?.lastName[0]}`.toUpperCase()}
-              </AvatarFallback>
+              <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56">
             <DropdownMenuLabel>
-              {user?.firstName} {user?.lastName} (@{user?.username})
+              {profile?.firstName} {profile?.lastName} (@{profile?.username})
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="hover:cursor-pointer">

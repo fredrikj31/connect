@@ -17,7 +17,6 @@ import {
   EllipsisVertical,
   Trash2,
 } from "lucide-react";
-import { PostWithUser } from "../../types/post";
 import { formatRelative } from "date-fns";
 import {
   Popover,
@@ -25,35 +24,36 @@ import {
   PopoverTrigger,
 } from "@shadcn-ui/components/ui/popover";
 import { Button } from "@shadcn-ui/components/ui/button";
-import { useDeletePost } from "../../api/posts/deletePost/useDeletePost";
 import { useToast } from "@shadcn-ui/components/ui/use-toast";
+import { PostWithProfile } from "../../api/posts/listPosts/listPosts";
+import { useDeletePost } from "../../api/posts/deletePost/useDeletePost";
 import { useAuth } from "../../providers/auth";
-import { useQueryClient } from "@tanstack/react-query";
 import { config } from "../../config";
 
 interface PostProps {
-  post: PostWithUser;
+  post: PostWithProfile;
 }
 
 export const Post = ({ post }: PostProps) => {
-  const queryClient = useQueryClient();
-  const { userId } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const { mutate: deletePost } = useDeletePost();
+
+  const initials =
+    `${post.user.firstName[0] ?? ""}${post.user.lastName[0] ?? ""}`.toUpperCase();
 
   const deletePostAction = () => {
     deletePost(
       { postId: post.id },
       {
-        onError: () => {
+        onError: (error) => {
           toast({
             title: "Error",
-            description: "Error while deleting your post",
+            description: error.message,
             variant: "destructive",
           });
         },
         onSuccess: () => {
-          void queryClient.invalidateQueries({ queryKey: ["posts"] });
           toast({
             title: "Success",
             description: "Successfully deleted your post",
@@ -73,7 +73,7 @@ export const Post = ({ post }: PostProps) => {
               className="object-cover"
               src={`${config.assets.baseUrl}/profiles/${post.user.userId}`}
             />
-            <AvatarFallback>CN</AvatarFallback>
+            <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
             <Link
@@ -83,13 +83,13 @@ export const Post = ({ post }: PostProps) => {
               {post.user.firstName} {post.user.lastName} (@{post.user.username})
             </Link>
             <span className="text-sm text-zinc-400">
-              {formatRelative(post.updatedAt ?? post.createdAt, new Date(), {
+              {formatRelative(post.createdAt, new Date(), {
                 weekStartsOn: 1,
               })}
             </span>
           </div>
         </div>
-        {userId === post.user.userId && (
+        {user?.id === post.user.userId && (
           <Popover>
             <PopoverTrigger>
               <EllipsisVertical />

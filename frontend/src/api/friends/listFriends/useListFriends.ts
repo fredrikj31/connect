@@ -1,13 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
-import { listFriends } from ".";
+import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryKeys } from "../../queryKeys";
+import { listFriends } from "./listFriends";
+
+export const listFriendsQueryOptions = queryOptions({
+  queryKey: queryKeys.friends.list,
+  queryFn: listFriends,
+  staleTime: 60 * 1000,
+});
 
 export const useListFriends = () => {
-  return useQuery({
-    queryKey: ["friends"],
-    staleTime: 60 * 1000, // 60 Seconds
-    queryFn: () => {
-      return listFriends();
-    },
-    retry: false,
-  });
+  return useQuery(listFriendsQueryOptions);
 };

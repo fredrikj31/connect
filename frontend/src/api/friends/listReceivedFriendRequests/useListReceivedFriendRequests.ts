@@ -1,13 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
-import { listReceivedFriendRequests } from ".";
+import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryKeys } from "../../queryKeys";
+import { listReceivedFriendRequests } from "./listReceivedFriendRequests";
+
+export const listReceivedFriendRequestsQueryOptions = queryOptions({
+  queryKey: queryKeys.friends.receivedRequests,
+  queryFn: listReceivedFriendRequests,
+  staleTime: 60 * 1000,
+});
 
 export const useListReceivedFriendRequests = () => {
-  return useQuery({
-    queryKey: ["friends", "requests", "received"],
-    staleTime: 60 * 1000, // 60 Seconds
-    queryFn: () => {
-      return listReceivedFriendRequests();
-    },
-    retry: false,
-  });
+  return useQuery(listReceivedFriendRequestsQueryOptions);
 };
