@@ -45,7 +45,7 @@ export const HomePage = () => {
           });
         },
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ["posts"] });
+          void queryClient.invalidateQueries({ queryKey: ["posts"] });
           toast({
             title: "Success",
             description: "Successfully created your post",

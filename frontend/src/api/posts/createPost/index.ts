@@ -9,7 +9,7 @@ export const createPost = async ({
   content,
 }: CreatePostOptions): Promise<Post> => {
   try {
-    const { data } = await apiClient.post(`/posts`, {
+    const { data } = await apiClient.post<unknown>(`/posts`, {
       content,
     });
     return PostSchema.parse(data);

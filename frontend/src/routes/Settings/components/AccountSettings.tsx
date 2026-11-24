@@ -71,7 +71,9 @@ export const AccountSettings = () => {
       <div className="flex flex-col gap-8">
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit((hej) => console.log(hej))}
+            onSubmit={(event) =>
+              void form.handleSubmit((values) => console.log(values))(event)
+            }
             className="flex flex-col gap-4"
           >
             <FormField
@@ -117,7 +119,11 @@ export const AccountSettings = () => {
           <Separator />
           <Form {...passwordForm}>
             <form
-              onSubmit={passwordForm.handleSubmit((hej) => console.log(hej))}
+              onSubmit={(event) =>
+                void passwordForm.handleSubmit((values) => console.log(values))(
+                  event,
+                )
+              }
               className="flex flex-col gap-4"
             >
               <FormField

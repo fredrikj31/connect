@@ -3,7 +3,7 @@
     "esModuleInterop": true,
     "incremental": false,
     "isolatedModules": true,
-    "lib": ["es2022", "DOM", "DOM.Iterable"],
+    "lib": ["es2022"],
     "module": "NodeNext",
     "moduleDetection": "force",
     "moduleResolution": "NodeNext",
@@ -12,9 +12,10 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "ES2022",
-    "outDir": "build",
+    "outDir": "./build",
     "declaration": false,
     "declarationMap": false
   },
-  "include": ["./src"]
+  "include": ["./src", "tsconfig.build.json"],
+  "exclude": ["./build"]
 }

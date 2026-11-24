@@ -3,7 +3,7 @@ import cookies from "js-cookie";
 import { Profile } from "../types/profile";
 import { useLoginUser } from "../api/actions/login/useLoginUser";
 import { decodeJwtToken } from "../helpers/decodeJwtToken";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useSignupUser } from "../api/actions/signup/useSignupUser";
 import { useToast } from "@shadcn-ui/components/ui/use-toast";
 import { ToastAction } from "@shadcn-ui/components/ui/toast";
@@ -57,9 +57,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     if (!accessToken && refreshTokenCookie) {
-      refreshToken().then(() => {
+      void refreshToken().then(() => {
         setAccessToken(cookies.get("access_token"));
-        navigate("/");
+        void navigate("/");
       });
     }
   }, [navigate, accessToken, refreshTokenCookie]);
@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       onSuccess: () => {
         setUserId(decodedAccessToken?.userId);
         setAccessToken(cookies.get("access_token"));
-        navigate("/");
+        void navigate("/");
       },
     });
   };
@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       },
       onSuccess: () => {
         setUserId(undefined);
-        navigate("/login");
+        void navigate("/login");
       },
     });
   };
@@ -114,12 +114,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           title: "Successfully signed up!",
           description: "Welcome to the club. You are now signed up",
           action: (
-            <ToastAction altText="Login" onClick={() => navigate("/")}>
+            <ToastAction altText="Login" onClick={() => void navigate("/")}>
               Login
             </ToastAction>
           ),
         });
-        navigate("/login");
+        void navigate("/login");
       },
     });
   };
@@ -133,6 +133,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook lives next to its provider; editing this file triggers a full reload instead of HMR
 export const useAuth = (): AuthProviderValue => {
   const authContext = useContext(AuthContext);
 

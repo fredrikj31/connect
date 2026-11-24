@@ -85,12 +85,12 @@ app.listen({ host: "0.0.0.0", port: config.api.port }, (err: Error | null) => {
 
 process.on("SIGINT", () => {
   app.log.warn(`SIGINT signal detected, terminating service`);
-  app.close();
+  void app.close();
 });
 
 process.on("SIGTERM", () => {
   app.log.warn(`SIGTERM signal detected, terminating service`);
-  app.close();
+  void app.close();
 });
 
 declare module "fastify" {

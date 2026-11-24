@@ -2,7 +2,7 @@ import { FastifyDynamicSwaggerOptions } from "@fastify/swagger";
 import { jsonSchemaTransform } from "fastify-type-provider-zod";
 import { config } from "../config";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument -- walks an untyped OpenAPI document */
 const normalizeFileFields = (obj: Record<string, any>) => {
   let routeContainsFile = false;
 
@@ -32,6 +32,7 @@ const normalizeFileFields = (obj: Record<string, any>) => {
 
   return obj;
 };
+/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
 
 export const swaggerConfig: FastifyDynamicSwaggerOptions = {
   mode: "dynamic",

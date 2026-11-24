@@ -22,6 +22,7 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "ES2022",
+    "outDir": "./build",
     "paths": {
       "@shadcn-ui/*": ["./src/shadcn-ui/*"]
     }

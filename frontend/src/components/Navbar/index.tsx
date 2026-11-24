@@ -25,7 +25,7 @@ import { ThemeToggler } from "./components/ThemeToggler";
 import { useAuth } from "../../providers/auth";
 import { useGetUserProfile } from "../../api/profiles/getUserProfile/useGetUserProfile";
 import { Bell, House, Mail, Menu, Users } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { config } from "../../config";
 import { JSX } from "react";
 

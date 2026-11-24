@@ -4,14 +4,14 @@ interface ApiErrorOptions {
   message: string;
 }
 
-export class ApiError {
+export class ApiError extends Error {
   public statusCode: number;
   public code: string;
-  public message: string;
 
   constructor({ statusCode, code, message }: ApiErrorOptions) {
+    super(message);
+    this.name = "ApiError";
     this.statusCode = statusCode;
     this.code = code;
-    this.message = message;
   }
 }

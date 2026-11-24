@@ -9,7 +9,7 @@ import {
   CardFooter,
   CardHeader,
 } from "@shadcn-ui/components/ui/card";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import {
   Heart,
   MessageSquareText,
@@ -53,7 +53,7 @@ export const Post = ({ post }: PostProps) => {
           });
         },
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ["posts"] });
+          void queryClient.invalidateQueries({ queryKey: ["posts"] });
           toast({
             title: "Success",
             description: "Successfully deleted your post",

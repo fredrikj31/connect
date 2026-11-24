@@ -1,5 +1,5 @@
 import { Button } from "@shadcn-ui/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 export const LandingPage = () => {
   return (

@@ -8,7 +8,7 @@ export const listSentFriendRequests = async (): Promise<
   SentFriendRequestWithUser[]
 > => {
   try {
-    const { data } = await apiClient.get("/friends/requests/sent");
+    const { data } = await apiClient.get<unknown>("/friends/requests/sent");
     return SentFriendRequestWithUserSchema.array().parse(data);
   } catch (error) {
     console.error("Failed to list sent friend requests", error);

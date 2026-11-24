@@ -5,7 +5,7 @@ export const getUserProfile = async (): Promise<
   Omit<Profile, "createdAt" | "updatedAt" | "deletedAt">
 > => {
   try {
-    const { data } = await apiClient.get("/profiles/me");
+    const { data } = await apiClient.get<unknown>("/profiles/me");
     return ProfileSchema.omit({
       createdAt: true,
       updatedAt: true,

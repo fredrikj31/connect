@@ -17,6 +17,6 @@ export const validateJwt = () => {
 
     const validatedJwt = await validateJwtToken({ token: jwtToken });
 
-    request.user = { id: validatedJwt["userId"] };
+    request.user = { id: validatedJwt["userId"] as string };
   };
 };

@@ -159,7 +159,9 @@ export const ProfileSettings = () => {
       <Separator />
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit((hej) => console.log(hej))}
+          onSubmit={(event) =>
+            void form.handleSubmit((values) => console.log(values))(event)
+          }
           className="flex flex-col gap-4"
         >
           <FormField

@@ -11,7 +11,7 @@ export const signupUser = async (
     Omit<Profile, "userId" | "createdAt" | "updatedAt" | "deletedAt">
 > => {
   try {
-    const { data } = await apiClient.post("/signup", user);
+    const { data } = await apiClient.post<unknown>("/signup", user);
     return z
       .object({
         ...AccountSchema.pick({ userId: true, email: true }).shape,

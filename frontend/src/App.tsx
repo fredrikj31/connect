@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "./providers/theme";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router";
 import { HomePage } from "./routes/Home";
 import { LandingPage } from "./routes/Landing";
 import { SignupPage } from "./routes/Signup";

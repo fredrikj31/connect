@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate } from "react-router";
 import { JSX } from "react";
 import { useAuth } from "../providers/auth";
 

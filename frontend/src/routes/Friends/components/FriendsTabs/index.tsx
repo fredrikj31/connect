@@ -52,9 +52,9 @@ export const FriendsTabs = () => {
               { requestId, status },
               {
                 onSuccess: () => {
-                  refetchReceivedFriendRequests();
+                  void refetchReceivedFriendRequests();
                   if (status === "accepted") {
-                    refetchFriends();
+                    void refetchFriends();
                   }
                 },
               },
@@ -68,7 +68,7 @@ export const FriendsTabs = () => {
           deleteFriendRequest={({ requestId }) => {
             deleteFriendRequest(
               { requestId },
-              { onSuccess: () => refetchSentFriendRequests() },
+              { onSuccess: () => void refetchSentFriendRequests() },
             );
           }}
         />

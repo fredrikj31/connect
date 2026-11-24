@@ -14,6 +14,6 @@ export const decodeJwtToken = <T>({
     return undefined;
   }
 
-  const payload = JSON.parse(window.atob(decodeURIComponent(jwtBody)));
+  const payload = JSON.parse(window.atob(decodeURIComponent(jwtBody))) as T;
   return payload;
 };

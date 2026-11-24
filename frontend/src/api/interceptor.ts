@@ -27,7 +27,7 @@ const isAccessTokenExpired = ({
   try {
     const payload = JSON.parse(
       atob(decodeURIComponent(accessToken.split(".")[1] ?? "")),
-    );
+    ) as { exp: number };
     // 5 seconds buffer to prevent token expiring during API call
     if (new Date((payload.exp - 5) * 1000).getTime() < Date.now()) {
       return true;

@@ -9,7 +9,7 @@ export const deletePost = async ({
   postId,
 }: DeletePostOptions): Promise<Post> => {
   try {
-    const { data } = await apiClient.delete(`/posts/${postId}`);
+    const { data } = await apiClient.delete<unknown>(`/posts/${postId}`);
     return PostSchema.parse(data);
   } catch (error) {
     console.error("Failed to delete post", error);

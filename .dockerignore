@@ -1,5 +1,5 @@
-.husky
-.vscode
-**/node_modules/
-database
-bruno
+**/node_modules
+**/build
+.docker
+.env
+.git

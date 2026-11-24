@@ -51,7 +51,7 @@ const database = async (
     fastify.decorate("database", pool);
   } catch (error: unknown) {
     logger.fatal(error, "Unable to connect to database");
-    throw new Error("Unable to connect to database!");
+    throw new Error("Unable to connect to database!", { cause: error });
   }
 };
 export const databasePlugin = fastifyPlugin(database);

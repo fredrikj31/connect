@@ -11,9 +11,12 @@ export const acceptOrDeclineFriendRequest = async ({
   status,
 }: AcceptOrDeclineFriendRequestOptions): Promise<FriendRequest> => {
   try {
-    const { data } = await apiClient.put(`/friends/requests/${requestId}`, {
-      status,
-    });
+    const { data } = await apiClient.put<unknown>(
+      `/friends/requests/${requestId}`,
+      {
+        status,
+      },
+    );
     return FriendRequestSchema.parse(data);
   } catch (error) {
     console.error("Failed to accept or decline friend request", error);
