@@ -1,294 +1,241 @@
+import { FriendRequestSchema, FriendSchema } from "@connect/database";
 import { FastifyPluginAsync } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
-import { validateJwt } from "../../hooks/validateJwt";
-import {
-  FriendRequestSchema,
-  ReceivedFriendRequestWithUserSchema,
-  FriendWithUserSchema,
-  SentFriendRequestWithUserSchema,
-} from "../../types/friend";
-import { UnauthorizedError } from "../../errors/client";
-import { listFriendsHandler } from "./handlers/listFriends";
-import { ApiErrorSchema } from "../../types/error";
-import { listReceivedFriendRequestsHandler } from "./handlers/listReceivedFriendRequests";
-import z from "zod";
-import { createFriendRequestHandler } from "./handlers/createFriendRequest";
-import { deleteFriendRequestHandler } from "./handlers/deleteFriendRequest";
+import { z } from "zod";
+import { ApiErrorSchema } from "../../errors";
+import { validateSession } from "../../hooks/validateSession";
+import { PublicProfileSchema } from "../../schemas/publicProfile";
 import { acceptFriendRequestHandler } from "./handlers/acceptFriendRequest";
+import { createFriendRequestHandler } from "./handlers/createFriendRequest";
 import { declineFriendRequestHandler } from "./handlers/declineFriendRequest";
+import { deleteFriendRequestHandler } from "./handlers/deleteFriendRequest";
+import { listFriendsHandler } from "./handlers/listFriends";
+import { listReceivedFriendRequestsHandler } from "./handlers/listReceivedFriendRequests";
 import { listSentFriendRequestsHandler } from "./handlers/listSentFriendRequests";
 
-export const friendsRoutes: FastifyPluginAsync = async (instance) => {
+const FriendRequestSummarySchema = FriendRequestSchema.pick({
+  id: true,
+  senderId: true,
+  receiverId: true,
+  status: true,
+  createdAt: true,
+});
+
+export const friendRoutes: FastifyPluginAsync = async (instance) => {
   const app = instance.withTypeProvider<ZodTypeProvider>();
   const database = instance.database;
 
   app.get(
     "/",
     {
-      onRequest: validateJwt(),
+      prefixTrailingSlash: "no-slash", // Register as "/friends", not "/friends/"
+      onRequest: validateSession(),
       schema: {
-        summary: "List user's friends",
+        summary: "List friends",
         description:
-          "Lists user's friends and their user profile with details about them.",
+          "Lists the friends of the signed-in user with their public profiles.",
         tags: ["friends"],
-        security: [
-          {
-            jwt: [""],
-          },
-        ],
+        security: [{ session: [] }],
         response: {
-          "200": FriendWithUserSchema.array().describe(
-            "Returns a list of the user's friends, and their user profile.",
-          ),
-          "401": ApiErrorSchema.describe(
-            "Either is the access token missing, or the user id wasn't found in the access token provided.",
-          ),
-          "500": ApiErrorSchema.describe(
-            "Unknown server error, see logs for more details.",
-          ),
+          "200": z
+            .object({
+              data: z.array(
+                FriendSchema.pick({ id: true, createdAt: true }).extend({
+                  friend: PublicProfileSchema,
+                }),
+              ),
+            })
+            .describe("Returns the signed-in user's friends."),
+          "401": ApiErrorSchema,
+          "500": ApiErrorSchema,
         },
       },
     },
     async (req, res) => {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new UnauthorizedError({
-          code: "user-id-not-found-in-request",
-          message: "A user id wasn't found in the request object",
-        });
-      }
-
-      const userFriends = await listFriendsHandler({
-        database,
-        userId,
-      });
-      return res.send([...userFriends]);
+      const userId = req.userId;
+      const friends = await listFriendsHandler({ database, userId });
+      return res.send({ data: friends });
     },
   );
 
   app.get(
     "/requests/received",
     {
-      onRequest: validateJwt(),
+      onRequest: validateSession(),
       schema: {
-        summary: "List user's received friend requests",
-        description: "Lists user's received friend requests from other users.",
+        summary: "List received friend requests",
+        description:
+          "Lists the pending friend requests sent to the signed-in user, with the sender's public profile.",
         tags: ["friends"],
-        security: [
-          {
-            jwt: [""],
-          },
-        ],
+        security: [{ session: [] }],
         response: {
-          "200": ReceivedFriendRequestWithUserSchema.array().describe(
-            "Returns a list of the user's received friend requests from other users.",
-          ),
-          "401": ApiErrorSchema.describe(
-            "Either is the access token missing, or the user id wasn't found in the access token provided.",
-          ),
-          "500": ApiErrorSchema.describe(
-            "Unknown server error, see logs for more details.",
-          ),
+          "200": z
+            .object({
+              data: z.array(
+                FriendRequestSchema.pick({
+                  id: true,
+                  status: true,
+                  createdAt: true,
+                }).extend({ sender: PublicProfileSchema }),
+              ),
+            })
+            .describe("Returns the pending requests received by the user."),
+          "401": ApiErrorSchema,
+          "500": ApiErrorSchema,
         },
       },
     },
     async (req, res) => {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new UnauthorizedError({
-          code: "user-id-not-found-in-request",
-          message: "A user id wasn't found in the request object",
-        });
-      }
-
-      const userReceivedFriendRequests =
-        await listReceivedFriendRequestsHandler({
-          database,
-          userId,
-        });
-      return res.send([...userReceivedFriendRequests]);
+      const userId = req.userId;
+      const requests = await listReceivedFriendRequestsHandler({
+        database,
+        userId,
+      });
+      return res.send({ data: requests });
     },
   );
 
   app.get(
     "/requests/sent",
     {
-      onRequest: validateJwt(),
+      onRequest: validateSession(),
       schema: {
-        summary: "List user's sent friend requests",
-        description: "Lists user's sent friend requests from other users.",
+        summary: "List sent friend requests",
+        description:
+          "Lists the pending friend requests the signed-in user has sent, with the receiver's public profile.",
         tags: ["friends"],
-        security: [
-          {
-            jwt: [""],
-          },
-        ],
+        security: [{ session: [] }],
         response: {
-          "200": SentFriendRequestWithUserSchema.array().describe(
-            "Returns a list of the user's sent friend requests from other users.",
-          ),
-          "401": ApiErrorSchema.describe(
-            "Either is the access token missing, or the user id wasn't found in the access token provided.",
-          ),
-          "500": ApiErrorSchema.describe(
-            "Unknown server error, see logs for more details.",
-          ),
+          "200": z
+            .object({
+              data: z.array(
+                FriendRequestSchema.pick({
+                  id: true,
+                  status: true,
+                  createdAt: true,
+                }).extend({ receiver: PublicProfileSchema }),
+              ),
+            })
+            .describe("Returns the pending requests sent by the user."),
+          "401": ApiErrorSchema,
+          "500": ApiErrorSchema,
         },
       },
     },
     async (req, res) => {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new UnauthorizedError({
-          code: "user-id-not-found-in-request",
-          message: "A user id wasn't found in the request object",
-        });
-      }
-
-      const userSentFriendRequests = await listSentFriendRequestsHandler({
+      const userId = req.userId;
+      const requests = await listSentFriendRequestsHandler({
         database,
         userId,
       });
-      return res.send([...userSentFriendRequests]);
+      return res.send({ data: requests });
     },
   );
 
   app.post(
     "/requests",
     {
-      onRequest: validateJwt(),
+      onRequest: validateSession(),
       schema: {
-        summary: "Creates a new friend request",
-        description: "Creates a new friend requests to another user.",
+        summary: "Send friend request",
+        description:
+          "Sends a friend request from the signed-in user to another user. Fails when the users are already friends or a request between them is pending.",
         tags: ["friends"],
-        security: [
-          {
-            jwt: [""],
-          },
-        ],
-        body: z.object({
-          friendId: z.string().uuid(),
-        }),
+        security: [{ session: [] }],
+        body: z.object({ friendId: z.string().min(1) }),
         response: {
-          "200": FriendRequestSchema,
+          "201": z
+            .object({ data: FriendRequestSummarySchema })
+            .describe("Returns the created friend request."),
+          "400": ApiErrorSchema,
+          "401": ApiErrorSchema,
+          "404": ApiErrorSchema,
+          "409": ApiErrorSchema,
+          "500": ApiErrorSchema,
         },
       },
     },
     async (req, res) => {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new UnauthorizedError({
-          code: "user-id-not-found-in-request",
-          message: "A user id wasn't found in the request object",
-        });
-      }
-
-      const { friendId } = req.body;
-      const friendRequest = await createFriendRequestHandler({
+      const userId = req.userId;
+      const request = await createFriendRequestHandler({
         database,
         userId,
-        friendId,
+        body: req.body,
       });
-
-      return res.status(200).send(friendRequest);
+      return res.status(201).send({ data: request });
     },
   );
 
   app.delete(
     "/requests/:requestId",
     {
-      onRequest: validateJwt(),
+      onRequest: validateSession(),
       schema: {
-        summary: "Deletes a friend request",
-        description: "Deletes a friend requests to another user.",
+        summary: "Withdraw friend request",
+        description:
+          "Withdraws a pending friend request sent by the signed-in user. Requests sent by other users are reported as not found.",
         tags: ["friends"],
-        security: [
-          {
-            jwt: [""],
-          },
-        ],
-        params: z.object({
-          requestId: z.string().uuid(),
-        }),
+        security: [{ session: [] }],
+        params: z.object({ requestId: z.uuid() }),
         response: {
-          "200": FriendRequestSchema,
+          "204": z.undefined().describe("The friend request was withdrawn."),
+          "400": ApiErrorSchema,
+          "401": ApiErrorSchema,
+          "404": ApiErrorSchema,
+          "500": ApiErrorSchema,
         },
       },
     },
     async (req, res) => {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new UnauthorizedError({
-          code: "user-id-not-found-in-request",
-          message: "A user id wasn't found in the request object",
-        });
-      }
-
-      const { requestId } = req.params;
-      const friendRequest = await deleteFriendRequestHandler({
+      const userId = req.userId;
+      await deleteFriendRequestHandler({
         database,
         userId,
-        requestId,
+        params: req.params,
       });
-
-      return res.status(200).send(friendRequest);
+      return res.status(204).send(undefined);
     },
   );
 
   app.put(
     "/requests/:requestId",
     {
-      onRequest: validateJwt(),
+      onRequest: validateSession(),
       schema: {
-        summary: "Accepts or Declines a friend request",
-        description: "Accepts or Declines a friend requests to another user.",
+        summary: "Accept or decline friend request",
+        description:
+          "Resolves a pending friend request received by the signed-in user. Accepting makes the two users friends. Requests received by other users are reported as not found.",
         tags: ["friends"],
-        security: [
-          {
-            jwt: [""],
-          },
-        ],
-        params: z.object({
-          requestId: z.string().uuid(),
-        }),
-        body: z.object({
-          status: z.enum(["accepted", "declined"]),
-        }),
+        security: [{ session: [] }],
+        params: z.object({ requestId: z.uuid() }),
+        body: z.object({ status: z.enum(["accepted", "declined"]) }),
         response: {
-          "200": FriendRequestSchema,
+          "200": z
+            .object({ data: FriendRequestSummarySchema })
+            .describe("Returns the resolved friend request."),
+          "400": ApiErrorSchema,
+          "401": ApiErrorSchema,
+          "404": ApiErrorSchema,
+          "409": ApiErrorSchema,
+          "500": ApiErrorSchema,
         },
       },
     },
     async (req, res) => {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new UnauthorizedError({
-          code: "user-id-not-found-in-request",
-          message: "A user id wasn't found in the request object",
-        });
-      }
-
-      const { requestId } = req.params;
-      const { status } = req.body;
-      if (status === "accepted") {
-        const friendRequest = await acceptFriendRequestHandler({
-          database,
-          userId,
-          requestId,
-        });
-
-        return res.status(200).send(friendRequest);
-      }
-
-      if (status === "declined") {
-        const friendRequest = await declineFriendRequestHandler({
-          database,
-          userId,
-          requestId,
-        });
-
-        return res.status(200).send(friendRequest);
-      }
+      const userId = req.userId;
+      const request =
+        req.body.status === "accepted"
+          ? await acceptFriendRequestHandler({
+              database,
+              userId,
+              params: req.params,
+            })
+          : await declineFriendRequestHandler({
+              database,
+              userId,
+              params: req.params,
+            });
+      return res.send({ data: request });
     },
   );
 };

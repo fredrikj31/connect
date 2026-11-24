@@ -1,0 +1,14 @@
+import { config } from "../../config";
+import { createDatabaseClient } from "@connect/database";
+import { createAuth } from "../../plugins/auth";
+
+// Only used by the Better Auth CLI (auth:generate). The app registers auth via authPlugin.
+export const auth = createAuth(
+  createDatabaseClient({
+    dbHost: config.database.host,
+    dbPort: config.database.port,
+    dbUser: config.database.user,
+    dbPassword: config.database.password,
+    dbName: config.database.name,
+  }),
+);

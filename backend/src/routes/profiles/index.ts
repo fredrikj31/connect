@@ -1,84 +1,114 @@
+import { ProfileSchema } from "@connect/database";
 import { FastifyPluginAsync } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
-import z from "zod";
-import { ProfileSchema } from "../../types/profiles";
-import { validateJwt } from "../../hooks/validateJwt";
-import { UnauthorizedError } from "../../errors/client";
-import { getUserProfileByIdHandler } from "./handlers/getUserProfileById";
-import { getUserProfileByUsernameHandler } from "./handlers/getUserProfileByUsername";
+import { z } from "zod";
+import { ApiErrorSchema } from "../../errors";
+import { validateSession } from "../../hooks/validateSession";
+import { PublicProfileSchema } from "../../schemas/publicProfile";
+import { createProfileHandler } from "./handlers/createProfile";
+import { getProfileHandler } from "./handlers/getProfile";
+import { getProfileByUsernameHandler } from "./handlers/getProfileByUsername";
 
-export const profilesRoutes: FastifyPluginAsync = async (instance) => {
+export const profileRoutes: FastifyPluginAsync = async (instance) => {
   const app = instance.withTypeProvider<ZodTypeProvider>();
   const database = instance.database;
 
-  app.get(
-    "/me",
+  app.post(
+    "/",
     {
-      onRequest: validateJwt(),
+      prefixTrailingSlash: "no-slash", // Register as "/profiles", not "/profiles/"
+      onRequest: validateSession(),
       schema: {
-        summary: "Get user information",
-        description: "Gets logged in users information",
+        summary: "Create profile",
+        description:
+          "Creates the profile of the signed-in user. Called once right after signup; a user has exactly one profile.",
         tags: ["profiles"],
-        security: [
-          {
-            jwt: [""],
-          },
-        ],
+        security: [{ session: [] }],
+        // `userId` comes from the session.
+        body: ProfileSchema.pick({
+          firstName: true,
+          lastName: true,
+          birthDate: true,
+          gender: true,
+        }),
         response: {
-          "200": ProfileSchema.omit({
-            createdAt: true,
-            updatedAt: true,
-            deletedAt: true,
-          }),
+          "201": z
+            .object({ data: PublicProfileSchema })
+            .describe("Returns the created profile."),
+          "400": ApiErrorSchema,
+          "401": ApiErrorSchema,
+          "409": ApiErrorSchema,
+          "500": ApiErrorSchema,
         },
       },
     },
     async (req, res) => {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new UnauthorizedError({
-          code: "user-id-not-found-in-request",
-          message: "A user id wasn't found in the request object",
-        });
-      }
+      const userId = req.userId;
+      const profile = await createProfileHandler({
+        database,
+        userId,
+        body: req.body,
+      });
+      return res.status(201).send({ data: profile });
+    },
+  );
 
-      const user = await getUserProfileByIdHandler({ database, userId });
-      return res.send(user);
+  app.get(
+    "/me",
+    {
+      onRequest: validateSession(),
+      schema: {
+        summary: "Get own profile",
+        description:
+          "Gets the profile of the signed-in user. Responds 404 `profile-not-found` until the user has created one.",
+        tags: ["profiles"],
+        security: [{ session: [] }],
+        response: {
+          "200": z
+            .object({ data: PublicProfileSchema })
+            .describe("Returns the signed-in user's profile."),
+          "401": ApiErrorSchema,
+          "404": ApiErrorSchema,
+          "500": ApiErrorSchema,
+        },
+      },
+    },
+    async (req, res) => {
+      const userId = req.userId;
+      const profile = await getProfileHandler({ database, userId });
+      return res.send({ data: profile });
     },
   );
 
   app.get(
     "/:username",
     {
-      onRequest: validateJwt(),
+      onRequest: validateSession(),
       schema: {
-        summary: "Get user profile information",
-        description: "Gets specific user profile information",
+        summary: "Get profile by username",
+        description: "Gets the public profile of a user by their username.",
         tags: ["profiles"],
-        security: [
-          {
-            jwt: [""],
-          },
-        ],
-        params: z.object({
-          username: z.string(),
-        }),
+        security: [{ session: [] }],
+        params: z.object({ username: z.string().min(1) }),
         response: {
-          "200": ProfileSchema.omit({
-            createdAt: true,
-            updatedAt: true,
-            deletedAt: true,
-          }),
+          "200": z
+            .object({ data: PublicProfileSchema })
+            .describe("Returns the user's profile."),
+          "400": ApiErrorSchema,
+          "401": ApiErrorSchema,
+          "404": ApiErrorSchema,
+          "500": ApiErrorSchema,
         },
       },
     },
     async (req, res) => {
-      const { username } = req.params;
-      const user = await getUserProfileByUsernameHandler({
+      const userId = req.userId;
+      const profile = await getProfileByUsernameHandler({
         database,
-        username,
+        userId,
+        params: req.params,
       });
-      return res.send(user);
+      return res.send({ data: profile });
     },
   );
 };

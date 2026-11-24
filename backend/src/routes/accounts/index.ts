@@ -1,49 +1,45 @@
 import { FastifyPluginAsync } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
-import { validateJwt } from "../../hooks/validateJwt";
-import { UnauthorizedError } from "../../errors/client";
-import { AccountSchema } from "../../types/account";
-import { getUserAccountHandler } from "./handlers/getUserAccount";
+import { z } from "zod";
+import { ApiErrorSchema } from "../../errors";
+import { validateSession } from "../../hooks/validateSession";
+import { getAccountHandler } from "./handlers/getAccount";
 
-export const accountsRoutes: FastifyPluginAsync = async (instance) => {
+/** The signed-in user's own account fields, from the better-auth `user` table. */
+export const AccountSchema = z.object({
+  id: z.string().min(1),
+  email: z.email(),
+  username: z.string(),
+});
+export type Account = z.infer<typeof AccountSchema>;
+
+export const accountRoutes: FastifyPluginAsync = async (instance) => {
   const app = instance.withTypeProvider<ZodTypeProvider>();
   const database = instance.database;
 
   app.get(
     "/me",
     {
-      onRequest: validateJwt(),
+      onRequest: validateSession(),
       schema: {
-        summary: "Get user account details",
-        description: "Gets logged in user account details",
+        summary: "Get account",
+        description: "Gets the account details of the signed-in user.",
         tags: ["accounts"],
-        security: [
-          {
-            jwt: [""],
-          },
-        ],
+        security: [{ session: [] }],
         response: {
-          "200": AccountSchema.omit({
-            password: true,
-            passwordSalt: true,
-            createdAt: true,
-            updatedAt: true,
-            deletedAt: true,
-          }),
+          "200": z
+            .object({ data: AccountSchema })
+            .describe("Returns the signed-in user's account."),
+          "401": ApiErrorSchema,
+          "404": ApiErrorSchema,
+          "500": ApiErrorSchema,
         },
       },
     },
     async (req, res) => {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new UnauthorizedError({
-          code: "user-id-not-found-in-request",
-          message: "A user id wasn't found in the request object",
-        });
-      }
-
-      const account = await getUserAccountHandler({ database, userId });
-      return res.send(account);
+      const userId = req.userId;
+      const account = await getAccountHandler({ database, userId });
+      return res.send({ data: account });
     },
   );
 };

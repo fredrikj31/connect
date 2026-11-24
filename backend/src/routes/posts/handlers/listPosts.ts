@@ -1,18 +1,25 @@
-import { CommonQueryMethods } from "slonik";
-import { PostWithUser } from "../../../types/post";
-import { listPosts } from "../../../services/database/queries/posts/listPosts";
+import { Database } from "@connect/database";
+import { UnauthorizedError } from "../../../errors/client";
+import {
+  listPosts,
+  PostWithProfile,
+} from "../../../services/database/queries/post/listPosts";
 
-interface ListPostsOptions {
-  userId: string;
+interface ListPostsHandlerOptions {
+  database: Database;
+  userId: string | undefined;
 }
 
-export const listPostsHandler = async (
-  database: CommonQueryMethods,
-  { userId }: ListPostsOptions,
-): Promise<PostWithUser[]> => {
-  const posts = await listPosts(database, {
-    userId,
-  });
+export const listPostsHandler = async ({
+  database,
+  userId,
+}: ListPostsHandlerOptions): Promise<PostWithProfile[]> => {
+  if (!userId) {
+    throw new UnauthorizedError({
+      code: "user-id-not-found-in-request",
+      message: "A user id wasn't found in the request object",
+    });
+  }
 
-  return posts;
+  return listPosts(database, { userId });
 };

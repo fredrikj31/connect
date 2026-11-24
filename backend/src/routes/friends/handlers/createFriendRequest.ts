@@ -1,54 +1,71 @@
-import { CommonQueryMethods } from "slonik";
-import { FriendRequest } from "../../../types/friend";
-import { getFriendRequestByFriendId } from "../../../services/database/queries/friends/getFriendRequestByFriendId";
-import { BadRequestError } from "../../../errors/client";
-import { createFriendRequest } from "../../../services/database/queries/friends/createFriendRequest";
+import { Database } from "@connect/database";
+import {
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+  UnauthorizedError,
+} from "../../../errors/client";
+import { friendExists } from "../../../services/database/queries/friend/friendExists";
+import {
+  createFriendRequest,
+  FriendRequestSummary,
+} from "../../../services/database/queries/friendRequest/createFriendRequest";
+import { pendingFriendRequestExists } from "../../../services/database/queries/friendRequest/pendingFriendRequestExists";
+import { userExists } from "../../../services/database/queries/user/userExists";
 
 interface CreateFriendRequestHandlerOptions {
-  database: CommonQueryMethods;
-  userId: string;
-  friendId: string;
+  database: Database;
+  userId: string | undefined;
+  body: { friendId: string };
 }
 
 export const createFriendRequestHandler = async ({
   database,
   userId,
-  friendId,
-}: CreateFriendRequestHandlerOptions): Promise<FriendRequest> => {
-  // TODO: Maybe extra check for if the user is blocked
-  const alreadySentFriendRequest = await getFriendRequestByFriendId(database, {
-    userId,
-    friendId,
+  body,
+}: CreateFriendRequestHandlerOptions): Promise<FriendRequestSummary> => {
+  if (!userId) {
+    throw new UnauthorizedError({
+      code: "user-id-not-found-in-request",
+      message: "A user id wasn't found in the request object",
+    });
+  }
+
+  if (body.friendId === userId) {
+    throw new BadRequestError({
+      code: "friend-request-to-self",
+      message: "You can't send a friend request to yourself",
+    });
+  }
+
+  if (!(await userExists(database, { id: body.friendId }))) {
+    throw new NotFoundError({
+      code: "user-not-found",
+      message: "The user was not found",
+    });
+  }
+
+  if (await friendExists(database, { userId, friendId: body.friendId })) {
+    throw new ConflictError({
+      code: "already-friends",
+      message: "You are already friends with this user",
+    });
+  }
+
+  if (
+    await pendingFriendRequestExists(database, {
+      userId,
+      friendId: body.friendId,
+    })
+  ) {
+    throw new ConflictError({
+      code: "friend-request-already-exists",
+      message: "There is already a pending friend request between you",
+    });
+  }
+
+  return createFriendRequest(database, {
+    senderId: userId,
+    receiverId: body.friendId,
   });
-  if (alreadySentFriendRequest.length !== 0) {
-    throw new BadRequestError({
-      code: "user-already-sent-friend-request",
-      message: "User has already sent a friend request to that user",
-    });
-  }
-
-  const alreadyReceivedFriendRequest = await getFriendRequestByFriendId(
-    database,
-    { userId: friendId, friendId: userId },
-  );
-  if (alreadyReceivedFriendRequest.length !== 0) {
-    throw new BadRequestError({
-      code: "user-already-received-friend-request",
-      message: "User has already received a friend request from that user",
-    });
-  }
-
-  if (userId === friendId) {
-    throw new BadRequestError({
-      code: "friend-request-matching-user-friend-id",
-      message: "User and friend id are matching and therefore invalid",
-    });
-  }
-
-  const friendRequest = await createFriendRequest(database, {
-    userId,
-    friendId,
-  });
-
-  return friendRequest;
 };

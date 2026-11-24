@@ -1,212 +1,158 @@
+import { PostLikeSchema, PostSchema } from "@connect/database";
 import { FastifyPluginAsync } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
-import { validateJwt } from "../../hooks/validateJwt";
-import z from "zod";
-import { BadRequestError, UnauthorizedError } from "../../errors/client";
+import { z } from "zod";
+import { ApiErrorSchema } from "../../errors";
+import { validateSession } from "../../hooks/validateSession";
+import { PublicProfileSchema } from "../../schemas/publicProfile";
 import { createPostHandler } from "./handlers/createPost";
-import {
-  PostLikeSchema,
-  PostSchema,
-  PostWithUserSchema,
-} from "../../types/post";
-import { ApiErrorSchema } from "../../types/error";
-import { listPostsHandler } from "./handlers/listPosts";
-import { likePostHandler } from "./handlers/likePost";
-import { unlikePostHandler } from "./handlers/unlikePost";
 import { deletePostHandler } from "./handlers/deletePost";
+import { likePostHandler } from "./handlers/likePost";
+import { listPostsHandler } from "./handlers/listPosts";
+import { unlikePostHandler } from "./handlers/unlikePost";
 
-export const postsRoutes: FastifyPluginAsync = async (instance) => {
+const PostLikeSummarySchema = PostLikeSchema.pick({
+  id: true,
+  postId: true,
+  userId: true,
+});
+
+export const postRoutes: FastifyPluginAsync = async (instance) => {
   const app = instance.withTypeProvider<ZodTypeProvider>();
   const database = instance.database;
 
   app.post(
     "/",
     {
-      onRequest: validateJwt(),
+      prefixTrailingSlash: "no-slash", // Register as "/posts", not "/posts/"
+      onRequest: validateSession(),
       schema: {
-        summary: "Create a post",
-        description: "Create a post for a specific user",
+        summary: "Create post",
+        description: "Creates a new post written by the signed-in user.",
         tags: ["posts"],
-        security: [
-          {
-            jwt: [""],
-          },
-        ],
-        body: z.object({
-          content: z.string(),
-        }),
+        security: [{ session: [] }],
+        // `userId` comes from the session.
+        body: PostSchema.pick({ content: true }),
         response: {
-          "200": PostSchema.describe("Returns newly user created post."),
-          "401": ApiErrorSchema.describe(
-            "Either is the access token missing, or the user id wasn't found in the access token provided.",
-          ),
-          "500": ApiErrorSchema.describe(
-            "Unknown server error, see logs for more details.",
-          ),
+          "201": z
+            .object({
+              data: PostSchema.pick({
+                id: true,
+                userId: true,
+                content: true,
+                createdAt: true,
+              }),
+            })
+            .describe("Returns the created post."),
+          "400": ApiErrorSchema,
+          "401": ApiErrorSchema,
+          "500": ApiErrorSchema,
         },
       },
     },
     async (req, res) => {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new UnauthorizedError({
-          code: "user-id-not-found-in-request",
-          message: "A user id wasn't found in the request object",
-        });
-      }
-
-      const { content } = req.body;
-
-      const post = await createPostHandler(database, { userId, content });
-      return res.send(post);
+      const userId = req.userId;
+      const post = await createPostHandler({
+        database,
+        userId,
+        body: req.body,
+      });
+      return res.status(201).send({ data: post });
     },
   );
 
   app.get(
     "/",
     {
-      onRequest: validateJwt(),
+      prefixTrailingSlash: "no-slash", // Register as "/posts", not "/posts/"
+      onRequest: validateSession(),
       schema: {
-        summary: "Lists posts for a specific user",
+        summary: "List feed",
         description:
-          "This endpoint generates the personalized posts feed for the specific user.",
+          "Lists the posts of the signed-in user and their friends, newest first, each with the author's public profile.",
         tags: ["posts"],
-        security: [
-          {
-            jwt: [""],
-          },
-        ],
+        security: [{ session: [] }],
         response: {
-          "200": PostWithUserSchema.array().describe(
-            "Returns posts from user's friends and themselves.",
-          ),
-          "401": ApiErrorSchema.describe(
-            "Either is the access token missing, or the user id wasn't found in the access token provided.",
-          ),
-          "500": ApiErrorSchema.describe(
-            "Unknown server error, see logs for more details.",
-          ),
+          "200": z
+            .object({
+              data: z.array(
+                PostSchema.pick({
+                  id: true,
+                  content: true,
+                  createdAt: true,
+                }).extend({ user: PublicProfileSchema }),
+              ),
+            })
+            .describe("Returns the signed-in user's feed."),
+          "401": ApiErrorSchema,
+          "500": ApiErrorSchema,
         },
       },
     },
     async (req, res) => {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new UnauthorizedError({
-          code: "user-id-not-found-in-request",
-          message: "A user id wasn't found in the request object",
-        });
-      }
-
-      const posts = await listPostsHandler(database, { userId });
-      return res.send(posts);
+      const userId = req.userId;
+      const posts = await listPostsHandler({ database, userId });
+      return res.send({ data: posts });
     },
   );
 
   app.delete(
     "/:postId",
     {
-      onRequest: validateJwt(),
+      onRequest: validateSession(),
       schema: {
-        summary: "Deletes posts for a specific user",
-        description: "Deletes a specific post from a user",
+        summary: "Delete post",
+        description:
+          "Deletes a post written by the signed-in user. Posts written by other users are reported as not found.",
         tags: ["posts"],
-        security: [
-          {
-            jwt: [""],
-          },
-        ],
-        params: z.object({
-          postId: z.string().uuid(),
-        }),
+        security: [{ session: [] }],
+        params: z.object({ postId: z.uuid() }),
         response: {
-          "200": PostSchema.describe("Returns deleted post"),
-          "401": ApiErrorSchema.describe(
-            "Either is the access token missing, or the user id wasn't found in the access token provided.",
-          ),
-          "500": ApiErrorSchema.describe(
-            "Unknown server error, see logs for more details.",
-          ),
+          "204": z.undefined().describe("The post was deleted."),
+          "400": ApiErrorSchema,
+          "401": ApiErrorSchema,
+          "404": ApiErrorSchema,
+          "500": ApiErrorSchema,
         },
       },
     },
     async (req, res) => {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new UnauthorizedError({
-          code: "user-id-not-found-in-request",
-          message: "A user id wasn't found in the request object",
-        });
-      }
-
-      const { postId } = req.params;
-
-      const deletedPost = await deletePostHandler(database, { userId, postId });
-      return res.send(deletedPost);
+      const userId = req.userId;
+      await deletePostHandler({ database, userId, params: req.params });
+      return res.status(204).send(undefined);
     },
   );
 
   app.put(
     "/:postId/likes",
     {
-      onRequest: validateJwt(),
+      onRequest: validateSession(),
       schema: {
-        summary: "Like/Unlike a specific post",
-        description: "Likes/Unlikes a specific post from a user.",
+        summary: "Like or unlike post",
+        description:
+          "Likes or unlikes a post on behalf of the signed-in user. Liking an already liked post is a no-op.",
         tags: ["posts"],
-        security: [
-          {
-            jwt: [""],
-          },
-        ],
-        params: z.object({
-          postId: z.string().uuid(),
-        }),
-        body: z.object({
-          status: z.enum(["like", "unlike"]),
-        }),
+        security: [{ session: [] }],
+        params: z.object({ postId: z.uuid() }),
+        body: z.object({ status: z.enum(["like", "unlike"]) }),
         response: {
-          "200": PostLikeSchema.describe("Returns like/unlike item."),
-          "401": ApiErrorSchema.describe(
-            "Either is the access token missing, or the user id wasn't found in the access token provided.",
-          ),
-          "500": ApiErrorSchema.describe(
-            "Unknown server error, see logs for more details.",
-          ),
+          "200": z
+            .object({ data: PostLikeSummarySchema })
+            .describe("Returns the like."),
+          "400": ApiErrorSchema,
+          "401": ApiErrorSchema,
+          "404": ApiErrorSchema,
+          "500": ApiErrorSchema,
         },
       },
     },
     async (req, res) => {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new UnauthorizedError({
-          code: "user-id-not-found-in-request",
-          message: "A user id wasn't found in the request object",
-        });
-      }
-
-      const { postId } = req.params;
-      const { status } = req.body;
-
-      switch (status) {
-        case "like": {
-          const likedPost = await likePostHandler(database, { postId, userId });
-          return res.send(likedPost);
-        }
-        case "unlike": {
-          const unlikedPost = await unlikePostHandler(database, {
-            postId,
-            userId,
-          });
-          return res.send(unlikedPost);
-        }
-        default: {
-          throw new BadRequestError({
-            code: "invalid-status-type",
-            message: "The provided status is not valid",
-          });
-        }
-      }
+      const userId = req.userId;
+      const like =
+        req.body.status === "like"
+          ? await likePostHandler({ database, userId, params: req.params })
+          : await unlikePostHandler({ database, userId, params: req.params });
+      return res.send({ data: like });
     },
   );
 };

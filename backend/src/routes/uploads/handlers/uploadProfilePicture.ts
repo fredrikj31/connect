@@ -1,26 +1,33 @@
 import { createWriteStream } from "fs";
 import { access, mkdir } from "fs/promises";
-import { promisify as utilPromisify } from "util";
-import { pipeline } from "stream";
+import { pipeline } from "stream/promises";
 import { MultipartFile } from "@fastify/multipart";
 import { config } from "../../../config";
-import { BadRequestError } from "../../../errors/client";
+import { BadRequestError, UnauthorizedError } from "../../../errors/client";
 
 interface UploadProfilePictureHandlerOptions {
-  userId: string;
+  userId: string | undefined;
   file: MultipartFile;
 }
+
 export const uploadProfilePictureHandler = async ({
   userId,
   file,
 }: UploadProfilePictureHandlerOptions): Promise<void> => {
+  if (!userId) {
+    throw new UnauthorizedError({
+      code: "user-id-not-found-in-request",
+      message: "A user id wasn't found in the request object",
+    });
+  }
+
   const folderPath = `${config.uploads.filePath}/profiles/`;
 
   // Check if file exceeds limits
   if (file.file.truncated) {
     throw new BadRequestError({
       code: "file-size-too-large",
-      message: "The uploaded file exceeds the limit of 1000 bytes",
+      message: "The uploaded file exceeds the size limit",
     });
   }
 
@@ -31,7 +38,6 @@ export const uploadProfilePictureHandler = async ({
     await mkdir(folderPath, { recursive: true });
   }
 
-  // Stream file uploading to folder
-  const pump = utilPromisify(pipeline);
-  await pump(file.file, createWriteStream(`${folderPath}/${userId}`));
+  // Stream the upload to disk, named after the user so it can be served as /profiles/<userId>
+  await pipeline(file.file, createWriteStream(`${folderPath}/${userId}`));
 };

@@ -1,29 +1,33 @@
-import { CommonQueryMethods } from "slonik";
-import { Post } from "../../../types/post";
-import { getPostById } from "../../../services/database/queries/posts/getPostById";
-import { UnauthorizedError } from "../../../errors/client";
-import { deletePost } from "../../../services/database/queries/posts/deletePost";
+import { Database } from "@connect/database";
+import { NotFoundError, UnauthorizedError } from "../../../errors/client";
+import { deletePost } from "../../../services/database/queries/post/deletePost";
 
 interface DeletePostHandlerOptions {
-  postId: string;
-  userId: string;
+  database: Database;
+  userId: string | undefined;
+  params: { postId: string };
 }
 
-export const deletePostHandler = async (
-  database: CommonQueryMethods,
-  { postId, userId }: DeletePostHandlerOptions,
-): Promise<Post> => {
-  // Get post planed for deletion
-  const post = await getPostById(database, { postId });
-
-  // Check if user "owns" the post, and if are able to delete it
-  if (userId !== post.userId) {
+export const deletePostHandler = async ({
+  database,
+  userId,
+  params,
+}: DeletePostHandlerOptions): Promise<void> => {
+  if (!userId) {
     throw new UnauthorizedError({
-      code: "not-authorized-to-delete-post",
-      message: "You didn't create the post and therefore can't delete it",
+      code: "user-id-not-found-in-request",
+      message: "A user id wasn't found in the request object",
     });
   }
 
-  const deletedPost = await deletePost(database, { postId });
-  return deletedPost;
+  const deleted = await deletePost(database, { id: params.postId, userId });
+
+  // A post written by another user is reported as not found on purpose, so
+  // the endpoint doesn't reveal whether a given post id exists.
+  if (!deleted) {
+    throw new NotFoundError({
+      code: "post-not-found",
+      message: "The post was not found",
+    });
+  }
 };

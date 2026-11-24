@@ -3,12 +3,16 @@ import { jsonSchemaTransform } from "fastify-type-provider-zod";
 import { config } from "../config";
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument -- walks an untyped OpenAPI document */
+/**
+ * Routes that consume `multipart/form-data` declare their body as
+ * `z.custom<MultipartFile>()`, which has no JSON Schema representation.
+ * Document them as a single binary `file` field instead.
+ */
 const normalizeFileFields = (obj: Record<string, any>) => {
   let routeContainsFile = false;
 
   if (
-    // eslint-disable-next-line no-prototype-builtins
-    obj.hasOwnProperty("consumes") &&
+    Object.hasOwn(obj, "consumes") &&
     obj.consumes.includes("multipart/form-data")
   ) {
     routeContainsFile = true;
@@ -21,7 +25,7 @@ const normalizeFileFields = (obj: Record<string, any>) => {
           type: "object",
           required: ["file"],
           properties: {
-            file: { type: "file" },
+            file: { type: "string", format: "binary" },
           },
         };
       } else {
@@ -36,7 +40,8 @@ const normalizeFileFields = (obj: Record<string, any>) => {
 
 export const swaggerConfig: FastifyDynamicSwaggerOptions = {
   mode: "dynamic",
-  swagger: {
+  openapi: {
+    openapi: "3.0.0",
     info: {
       title: "Connect API",
       description: 'The main and only API behind "connect"',
@@ -46,15 +51,20 @@ export const swaggerConfig: FastifyDynamicSwaggerOptions = {
       url: "https://github.com/fredrikj31/connect",
       description: "Find more info here",
     },
-    host: `127.0.0.1:${config.api.port}`,
-    schemes: ["http"],
-    consumes: ["application/json"],
-    produces: ["application/json"],
-    securityDefinitions: {
-      jwt: {
-        type: "apiKey",
-        name: "Authorization",
-        in: "header",
+    servers: [
+      {
+        url: `http://127.0.0.1:${config.api.port}/api`,
+        description: "Local running API",
+      },
+    ],
+    components: {
+      securitySchemes: {
+        session: {
+          name: "better-auth.session_token",
+          in: "cookie",
+          type: "apiKey",
+          description: "Authentication with your better-auth session cookie",
+        },
       },
     },
   },
