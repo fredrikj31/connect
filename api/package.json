@@ -1,5 +1,5 @@
 {
-  "name": "@thoughts/api",
+  "name": "@connect/api",
   "scripts": {
     "dev": "tsx watch src/app.ts | pino-pretty",
     "build": "tsc",

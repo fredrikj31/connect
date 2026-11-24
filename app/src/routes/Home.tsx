@@ -28,7 +28,7 @@ export const HomePage = () => {
   const createPostAction = () => {
     if (!content || content.length === 0) {
       toast({
-        title: "Empty thoughts?",
+        title: "Empty post?",
         description: "Please fill out the form before posting",
       });
       return;

@@ -37,12 +37,12 @@ export const swaggerConfig: FastifyDynamicSwaggerOptions = {
   mode: "dynamic",
   swagger: {
     info: {
-      title: "Thoughts API",
-      description: 'The main and only API behind "thoughts"',
+      title: "Connect API",
+      description: 'The main and only API behind "connect"',
       version: "0.0.1",
     },
     externalDocs: {
-      url: "https://github.com/fredrikj31/thoughts",
+      url: "https://github.com/fredrikj31/connect",
       description: "Find more info here",
     },
     host: `127.0.0.1:${config.api.port}`,

@@ -1,6 +1,6 @@
-# Thoughts
+# Connect
 
-A Twitter (X) / Facebook clone named "thoughts", which focuses on close relationships between people and sharing thoughts.
+A social network named "connect", which focuses on close relationships between people.
 
 ## Getting Started
 
@@ -35,7 +35,7 @@ DB_HOST=127.0.0.1
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=password
-DB_NAME=thoughts
+DB_NAME=connect
 
 # Website
 VITE_API_BASE_URL=http://127.0.0.1:3000/api
@@ -87,3 +87,45 @@ $ pnpm run app:dev
 
 You can utilize two terminal windows, so run them both at the same time.
 These commands are running in _watch_ mode, which means that they are restarting when you make changes to the files.
+
+## Migrating from "thoughts"
+
+The project was previously named "thoughts". The rename changed the Postgres database name, the Docker container, network and volume names, and the Docker Hub image names. Existing environments need a one-time migration.
+
+### Local development
+
+Postgres only creates the `POSTGRES_DB` database on an empty data directory, so an existing `.docker/database` still holds a database called `thoughts`. Rename it in place:
+
+```bash
+$ docker compose --profile dev up -d local-database
+$ docker exec connect-database psql -U postgres -d postgres -c 'ALTER DATABASE thoughts RENAME TO connect;'
+```
+
+Alternatively delete `.docker/database` to start from a fresh database.
+
+If the repository folder is still called `thoughts`, close your editor, rename the folder to `connect`, reopen it and run `pnpm install`.
+
+### Production
+
+```bash
+$ docker compose --profile prod down
+
+# Copy the named volumes to their new names
+$ docker volume create connect-database-data
+$ docker volume create connect-assets-data
+$ docker run --rm -v thoughts-database-data:/from -v connect-database-data:/to alpine sh -c 'cp -a /from/. /to/'
+$ docker run --rm -v thoughts-assets-data:/from -v connect-assets-data:/to alpine sh -c 'cp -a /from/. /to/'
+
+# Rename the database inside the copied data directory
+$ docker compose --profile prod up -d database
+$ docker exec connect-database psql -U "$DB_USER" -d postgres -c 'ALTER DATABASE thoughts RENAME TO connect;'
+
+# Pull the renamed images (published by the first release after the rename) and start everything
+$ docker compose --profile prod pull
+$ docker compose --profile prod up -d
+
+# Once everything is verified, remove the old volumes
+$ docker volume rm thoughts-database-data thoughts-assets-data
+```
+
+The old Docker Hub repositories `thoughts-backend` and `thoughts-frontend` are no longer updated and can be deleted.

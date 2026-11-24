@@ -1,3 +1,5 @@
+name: connect
+
 x-logging: &default-logging
   driver: "json-file"
   options:
@@ -6,7 +8,7 @@ x-logging: &default-logging
 
 services:
   local-database:
-    container_name: thoughts-database
+    container_name: connect-database
     image: "postgres:17-alpine"
     restart: always
     profiles:
@@ -14,7 +16,7 @@ services:
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: thoughts
+      POSTGRES_DB: connect
     ports:
       - 5432:5432
     volumes:
@@ -23,7 +25,7 @@ services:
     logging: *default-logging
 
   database:
-    container_name: thoughts-database
+    container_name: connect-database
     image: "postgres:17-alpine"
     restart: always
     profiles:
@@ -31,18 +33,18 @@ services:
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: thoughts
+      POSTGRES_DB: connect
     ports:
       - 3000:5432
     networks:
-      - thoughts-network
+      - connect-network
     volumes:
       - database-data:/var/lib/postgresql/data # store data from postgresql in the volume
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql # init database with SQL files from local "database" folder
     logging: *default-logging
 
   assets-local:
-    container_name: thoughts-assets
+    container_name: connect-assets
     image: "nginx:1.27.3-alpine"
     restart: always
     profiles:
@@ -55,7 +57,7 @@ services:
     logging: *default-logging
 
   assets:
-    container_name: thoughts-assets
+    container_name: connect-assets
     image: "nginx:1.27.3-alpine"
     restart: always
     profiles:
@@ -63,7 +65,7 @@ services:
     ports:
       - 3001:80
     networks:
-      - thoughts-network
+      - connect-network
       - cloudflared
     volumes:
       - assets-data:/usr/share/nginx/data
@@ -71,8 +73,8 @@ services:
     logging: *default-logging
 
   backend:
-    container_name: thoughts-backend
-    image: fredrikj31/thoughts-backend:latest
+    container_name: connect-backend
+    image: fredrikj31/connect-backend:latest
     restart: always
     profiles:
       - prod
@@ -80,14 +82,14 @@ services:
       WEBSITE_BASE_URL: ${WEBSITE_BASE_URL}
       JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
       PASSWORD_SALT: ${PASSWORD_SALT}
-      DB_HOST: thoughts-database
+      DB_HOST: connect-database
       DB_PORT: 5432 # Must be set to "5432", because the backend and database shares network
-      DB_NAME: thoughts
+      DB_NAME: connect
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       UPLOADS_FILE_PATH: /files${UPLOADS_FILE_PATH} # /files is the root folder, which is the container's mount point
     networks:
-      - thoughts-network
+      - connect-network
       - cloudflared
     volumes:
       - assets-data:/files # /files is the root folder, which is the container's mount point
@@ -96,8 +98,8 @@ services:
     logging: *default-logging
 
   frontend:
-    container_name: thoughts-frontend
-    image: fredrikj31/thoughts-frontend:latest
+    container_name: connect-frontend
+    image: fredrikj31/connect-frontend:latest
     restart: always
     profiles:
       - prod
@@ -111,15 +113,15 @@ services:
     logging: *default-logging
 
 networks:
-  thoughts-network:
+  connect-network:
     driver: bridge
   cloudflared:
     external: true
 
 volumes:
   database-data:
-    name: thoughts-database-data
+    name: connect-database-data
     driver: local
   assets-data:
-    name: thoughts-assets-data
+    name: connect-assets-data
     driver: local
