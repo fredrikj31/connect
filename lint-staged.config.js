@@ -1,12 +1,12 @@
 export default {
-  "app/**/*": () => [
-    "pnpm run app:format:check",
-    "pnpm run app:lint",
-    "pnpm run app:build:check",
+  "frontend/**/*": () => [
+    "pnpm run frontend:format:check",
+    "pnpm run frontend:lint",
+    "pnpm run frontend:build:check",
   ],
-  "api/**/*": () => [
-    "pnpm run api:format:check",
-    "pnpm run api:lint",
-    "pnpm run api:build:check",
+  "backend/**/*": () => [
+    "pnpm run backend:format:check",
+    "pnpm run backend:lint",
+    "pnpm run backend:build:check",
   ],
 };

@@ -11,8 +11,8 @@ jobs:
   file-changes:
     runs-on: ubuntu-latest
     outputs:
-      file-changes-backend: ${{ steps.check_changes.outputs.api_changed }}
-      file-changes-frontend: ${{ steps.check_changes.outputs.app_changed }}
+      file-changes-backend: ${{ steps.check_changes.outputs.backend_changed }}
+      file-changes-frontend: ${{ steps.check_changes.outputs.frontend_changed }}
     steps:
       # 1. Check out the repository's code
       - name: Checkout Code
@@ -21,7 +21,7 @@ jobs:
           # Fetch all history so we can compare tags
           fetch-depth: 0
 
-      # 2. Natively check for file changes in 'api' and 'app'
+      # 2. Natively check for file changes in 'backend' and 'frontend'
       - name: Check for file changes
         id: check_changes
         run: |
@@ -36,30 +36,30 @@ jobs:
           # If there is no previous tag, it's the first release. Assume changes.
           if [[ -z "$PREVIOUS_TAG" ]]; then
             echo "No previous release found. Assuming this is the first release."
-            echo "api_changed=true" >> $GITHUB_OUTPUT
-            echo "app_changed=true" >> $GITHUB_OUTPUT
+            echo "backend_changed=true" >> $GITHUB_OUTPUT
+            echo "frontend_changed=true" >> $GITHUB_OUTPUT
             exit 0
           fi
 
           echo "Comparing changes between $PREVIOUS_TAG and $CURRENT_TAG"
 
           # Use 'git diff --quiet' which exits with 0 if no changes, 1 if changes.
-          # We check the 'api' folder.
-          if git diff --quiet $PREVIOUS_TAG $CURRENT_TAG -- api; then
-            echo "No changes detected in 'api' folder."
-            echo "api_changed=false" >> $GITHUB_OUTPUT
+          # We check the 'backend' folder.
+          if git diff --quiet $PREVIOUS_TAG $CURRENT_TAG -- backend; then
+            echo "No changes detected in 'backend' folder."
+            echo "backend_changed=false" >> $GITHUB_OUTPUT
           else
-            echo "Changes detected in 'api' folder."
-            echo "api_changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in 'backend' folder."
+            echo "backend_changed=true" >> $GITHUB_OUTPUT
           fi
 
-          # We check the 'app' folder.
-          if git diff --quiet $PREVIOUS_TAG $CURRENT_TAG -- app; then
-            echo "No changes detected in 'app' folder."
-            echo "app_changed=false" >> $GITHUB_OUTPUT
+          # We check the 'frontend' folder.
+          if git diff --quiet $PREVIOUS_TAG $CURRENT_TAG -- frontend; then
+            echo "No changes detected in 'frontend' folder."
+            echo "frontend_changed=false" >> $GITHUB_OUTPUT
           else
-            echo "Changes detected in 'app' folder."
-            echo "app_changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in 'frontend' folder."
+            echo "frontend_changed=true" >> $GITHUB_OUTPUT
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

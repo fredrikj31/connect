@@ -8,8 +8,8 @@ RUN npm install -g pnpm@latest-9
 FROM base AS build
 COPY . /usr/src/app
 WORKDIR /usr/src/app
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --filter=app
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm deploy --filter=app /app --ignore-scripts
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --filter=@connect/frontend
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm deploy --filter=@connect/frontend /app --ignore-scripts
 WORKDIR /app
 RUN pnpm run build
 

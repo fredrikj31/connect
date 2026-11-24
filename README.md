@@ -76,13 +76,13 @@ When you have installed the packages and started the containers, you can now sta
 **API:**
 
 ```bash
-$ pnpm run api:dev
+$ pnpm run backend:dev
 ```
 
 **Web App:**
 
 ```bash
-$ pnpm run app:dev
+$ pnpm run frontend:dev
 ```
 
 You can utilize two terminal windows, so run them both at the same time.

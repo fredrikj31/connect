@@ -1,4 +1,4 @@
-import Fastify, { FastifyInstance } from "fastify";
+import Fastify, { FastifyError, FastifyInstance } from "fastify";
 import fastifySwagger from "@fastify/swagger";
 import fastifyCors from "@fastify/cors";
 import fastifyCookie from "@fastify/cookie";
@@ -59,11 +59,12 @@ app.setErrorHandler((error, _, res) => {
     });
   }
 
-  if (error.code === "FST_ERR_VALIDATION") {
+  const fastifyError = error as FastifyError;
+  if (fastifyError.code === "FST_ERR_VALIDATION") {
     return res.status(400).send({
       code: "invalid-request-payload",
       message: "Invalid payload sent with request",
-      issues: error.validation?.[0]?.params.issue,
+      issues: fastifyError.validation?.[0]?.params.issue,
     });
   }
 
